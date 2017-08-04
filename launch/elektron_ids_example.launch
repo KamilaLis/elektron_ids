@@ -1,0 +1,19 @@
+<launch>
+    <arg name="name"
+         default="elektron_ids"  />
+    <!--arg name="config_file"
+         default="$(find elektron_ids)/config/elektron_ids_example.yaml"  /-->
+
+    <!-- parameters -->
+    <!--rosparam param="node_name">$(arg ns)</rosparam-->
+    <!--rosparam  command="load"
+               ns="$(arg name)"
+               file="$(arg config_file)"  /-->
+               
+    <!-- node -->
+    <node name="$(arg name)"
+          pkg="elektron_ids"
+          type="elektron_ids_node"
+          output="screen"
+          respawn="true" />
+</launch>

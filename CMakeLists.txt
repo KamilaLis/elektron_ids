@@ -1,46 +1,57 @@
-cmake_minimum_required(VERSION 2.8.3)
 project(elektron_ids)
-
+cmake_minimum_required(VERSION 2.8.3)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
+##############
+## Packages ##
+##############
+
+## Catkin ##
+
 find_package(catkin REQUIRED COMPONENTS
-        roscpp
-        tf
+  roscpp
+)
 
-        nav_msgs
-        geometry_msgs
-        sensor_msgs
-        )
-
-include_directories(
-        include
-        ${catkin_INCLUDE_DIRS}
-        )
+###################################
+## catkin specific configuration ##
+###################################
 
 catkin_package(
-        INCLUDE_DIRS include
-        LIBRARIES ${PROJECT_NAME}
-        CATKIN_DEPENDS
-            roscpp
-            tf
-        
-            nav_msgs
-            geometry_msgs
-            sensor_msgs
-        )
+  INCLUDE_DIRS include
+#  LIBRARIES elektron_ids
+  CATKIN_DEPENDS roscpp
+#  DEPENDS system_lib
+)
+
+###########
+## Build ##
+###########
+
+## Locations ##
+
+include_directories(
+  ${catkin_INCLUDE_DIRS}
+  include/
+)
+
+## Libraries ##
 
 add_library(${PROJECT_NAME}
-        src/ComponentIDS.cpp
-        )
+  src/${PROJECT_NAME}/ComponentIDS.cpp
+)
 
 target_link_libraries(${PROJECT_NAME}
-        ${catkin_LIBRARIES}
-        )
+  ${catkin_LIBRARIES}
+)
 
-add_executable(${PROJECT_NAME}-main
-        src/main.cpp
-        )
+## Executables ##
 
-target_link_libraries(${PROJECT_NAME}-main
-        ${PROJECT_NAME}
-        )
+add_executable(elektron_ids_node
+  src/elektron_ids_node.cpp
+)
+
+target_link_libraries(elektron_ids_node
+  ${catkin_LIBRARIES}
+  ${PROJECT_NAME}
+)
+
