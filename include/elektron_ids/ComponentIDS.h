@@ -22,7 +22,7 @@ public:
 
 
 private:
-    ros::TopicManager* manager_;
+    //ros::TopicManager* manager_;
 //TODO: params from yaml file
 };
 

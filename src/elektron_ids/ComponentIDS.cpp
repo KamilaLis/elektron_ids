@@ -3,32 +3,27 @@
 namespace elektron_ids {
 
 ComponentIDS::ComponentIDS(){
-    manager_= new ros::TopicManager();
+
 }
 
 void ComponentIDS::on_working(){
-    preventFabrication("/robot1/component_simulation/cmd_vel");
-    preventInterception("/robot1/camera_1/rgb/image_raw");
+    preventFabrication("/chatter");
+    //preventInterception("/rosout");
 }
 
 /*
-*  Check if topic has only one subscriber
+*  Check if topic has only allowed subscribers
 */
 void ComponentIDS::preventInterception(const std::string& topic){
     //TODO: liczba dozwolonych topicow z pliku konfiguracyjnego
-    if(manager_->getNumSubscribers(topic)>1){
-        ROS_INFO("This topic has more than one subscriber!");
-    }
+    ROS_INFO("%s(%d subscribers)",topic.c_str(), int(ros::TopicManager::instance()->getNumSubscribers(topic)));
 }
 
 /*
-*  Check if topic has only one publisher
+*  Check if topic has only allowed publishers
 */
 void ComponentIDS::preventFabrication(const std::string& topic){
-    //TODO: liczba dozwolonych topicow z pliku konfiguracyjnego
-    if(manager_->getNumPublishers(topic)>1){
-        ROS_INFO("This topic has more than one publisher!");
-    }
+    ROS_INFO("%s(%d publisher)", topic.c_str(), int(ros::TopicManager::instance()->getNumPublishers(topic)));
 }
 
 }; /* namespace elektron_ids */
