@@ -1,15 +1,16 @@
 <launch>
+
     <arg name="name"
          default="elektron_ids"  />
-    <!--arg name="config_file"
-         default="$(find elektron_ids)/config/elektron_ids_example.yaml"  /-->
+    <arg name="config_file"
+         default="$(find elektron_ids)/config/elektron_ids_example.yaml"  />
 
     <!-- parameters -->
-    <!--rosparam param="node_name">$(arg ns)</rosparam-->
-    <!--rosparam  command="load"
+    <rosparam  command="load"
                ns="$(arg name)"
-               file="$(arg config_file)"  /-->
-    <node pkg="talker" name="talker" type="talker.py" output="screen"/>
+               file="$(arg config_file)"  />
+
+    <!--node pkg="talker" name="talker" type="talker.py" output="screen"/-->
 
                
     <!-- node -->

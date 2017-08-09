@@ -2,9 +2,7 @@
 #define COMPONENTIDS_H
 
 #include <iostream>
-
-//ROS
-#include <iostream>
+#include <stdlib.h>
 
 //ROS
 #include <ros/ros.h>
@@ -17,27 +15,24 @@ class ComponentIDS
 {
 public:
     ComponentIDS();
-    XmlRpc::XmlRpcValue getSystemState();
-    XmlRpc::XmlRpcValue getURI(const std::string& node_name);
-    XmlRpc::XmlRpcValue getPubsName(const std::string& topic);
-    XmlRpc::XmlRpcValue getSubsName(const std::string& topic);
-    void preventInterception(const std::string &topic);
-    void preventFabrication(const std::string &topic);
+
+    void detectInterception(const std::string &topic, XmlRpc::XmlRpcValue & publishers);
+    void detectFabrication(const std::string &topic, XmlRpc::XmlRpcValue & subscribers);
     void on_working();
 
+    XmlRpc::XmlRpcValue getSystemState();
+    XmlRpc::XmlRpcValue getURI(const std::string& node_name);
+    XmlRpc::XmlRpcValue getParam(const std::string& param_name);
+    XmlRpc::XmlRpcValue getPubsName(const std::string& topic, XmlRpc::XmlRpcValue & publishers);
+    XmlRpc::XmlRpcValue getSubsName(const std::string& topic, XmlRpc::XmlRpcValue & subscribers);
+    bool isAuthorizated(const std::string& node_name);
 
 private:
-
+    // parameters
+    XmlRpc::XmlRpcValue par_pubs_;
+    XmlRpc::XmlRpcValue par_subs_;
 };
 
-template<class T>
-T getParam(const std::string &param_name, const T &default_val){
-    ros::NodeHandle nh("~");
-    std::string name_ = param_name;
-    T value;
-    nh.param<T>(name_, value, default_val);
-    return value;
-}
 
 }; /* namespace elektron_ids */
 
