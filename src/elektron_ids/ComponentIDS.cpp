@@ -128,11 +128,10 @@ bool ComponentIDS::isAuthorizated(const std::string& node_name)
         std:size_t pos3 = address.find("       ");
         ip = address.substr(0,pos3);
     }
-    
+    //TODO:
+    //substr: __pos (which is 1) > this->size() (which is 0)
     for(int i=0; i<this->par_pubs_.size(); ++i){
-        std::string pub_ip = par_pubs_[i];
-        //ROS_INFO("IP: %s, size: %d", ip.c_str(), int(ip.size()));
-        //ROS_INFO("par_pubs_: %s, size: %d", pub_ip.c_str(),int(pub_ip.size()));        
+        std::string pub_ip = par_pubs_[i];        
         if(pub_ip==ip) return true;
     }
     return false;
@@ -170,10 +169,15 @@ void ComponentIDS::detectInterception(const std::string& topic,
             std::string node = sub[s];
             //ROS_INFO("* node: %s", node.c_str());
             if(!isAuthorizated(node)){
-                ROS_INFO("Unauthorizated node %s subscribe data from %s", node.c_str(), topic.c_str());
+                ROS_WARN("Unauthorizated node %s subscribe data from %s", node.c_str(), topic.c_str());
                 // kill that node
-                //std::string command = "rosnode kill " + node;
+                std::string command = "read -p 'Would you like to kill it? y/n: \n' command";
+                std::string response = exec(command.c_str());
+                ROS_INFO("response: %s", response.c_str());
+                //if(response=="y" || response=="Y"){
+                //command = "rosnode kill " + node;
                 //system(command.c_str());
+                //}
             }
         }
     }
@@ -189,12 +193,16 @@ void ComponentIDS::detectFabrication(const std::string& topic,
         for (int p=0; p<pub.size(); ++p){
             std::string node = pub[p];
             if(!isAuthorizated(node)){
-                ROS_INFO("Unauthorizated node %s publish data on %s", node.c_str(), topic.c_str());
+                ROS_WARN("Unauthorizated node %s publish data on %s", node.c_str(), topic.c_str());
                 // kill that node
-                std::string command = "read -p 'Would you like to kill it? y/n: \n' command";
-                std::string response = exec(command.c_str());
-                command = "rosnode kill " + node;
+                std::string command = "echo 'Would you like to kill it? y/n: '";
+                std::string response;
                 system(command.c_str());
+                std::cin>>response;
+                if(response=="y" || response=="Y"){
+                    command = "rosnode kill " + node;
+                    system(command.c_str());
+                }
             }
         }
     }
