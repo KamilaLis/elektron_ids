@@ -25,12 +25,14 @@ public:
     XmlRpc::XmlRpcValue getParam(const std::string& param_name);
     XmlRpc::XmlRpcValue getPubsName(const std::string& topic, XmlRpc::XmlRpcValue & publishers);
     XmlRpc::XmlRpcValue getSubsName(const std::string& topic, XmlRpc::XmlRpcValue & subscribers);
-    bool isAuthorizated(const std::string& node_name);
+    bool isAuthorizated(const std::string& node_name,const std::string& topic_name, bool sub);
 
 private:
     // parameters
-    XmlRpc::XmlRpcValue par_pubs_;
-    XmlRpc::XmlRpcValue par_subs_;
+    XmlRpc::XmlRpcValue par_IP_;
+
+    bool hasProperIP(const std::string& node_name);
+    bool isOnList(const std::string& node_name, const std::string& topic_name, bool sub);
 };
 
 

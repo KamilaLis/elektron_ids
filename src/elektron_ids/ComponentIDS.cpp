@@ -4,8 +4,7 @@ namespace elektron_ids {
 
 ComponentIDS::ComponentIDS()
 {
-    this->par_pubs_ = getParam("publishers");
-    this->par_subs_ = getParam("subscribers");
+    this->par_IP_ = getParam("while_list");
 }
 
 // Retrieve list representation of system state (i.e. publishers, subscribers, and services).
@@ -65,8 +64,6 @@ XmlRpc::XmlRpcValue ComponentIDS::getParam(const std::string& param_name)
 XmlRpc::XmlRpcValue ComponentIDS::getSubsName(const std::string& topic, 
                                                 XmlRpc::XmlRpcValue & subscribers)
 {
-    //XmlRpc::XmlRpcValue payload = getSystemState();
-    //XmlRpc::XmlRpcValue & subscribers = system_state[1];
     std::vector<XmlRpc::XmlRpcValue> sub;
     for(int i=0; i<subscribers.size(); ++i){
         if(subscribers[i][0]==topic){
@@ -83,7 +80,6 @@ XmlRpc::XmlRpcValue ComponentIDS::getSubsName(const std::string& topic,
 XmlRpc::XmlRpcValue ComponentIDS::getPubsName(const std::string& topic,
                                                 XmlRpc::XmlRpcValue & publishers)
 {
-    //XmlRpc::XmlRpcValue & publishers = system_state[0];
     std::vector<XmlRpc::XmlRpcValue> pub;
     /*
         pub: [topic_name,[pub1, pub2, ...]]
@@ -93,6 +89,7 @@ XmlRpc::XmlRpcValue ComponentIDS::getPubsName(const std::string& topic,
     }
     return pub[0][1];
 }
+
 
 // Get return value from system()
 std::string exec(const char* cmd) {
@@ -114,11 +111,11 @@ std::string exec(const char* cmd) {
 }
 
 // Check if node's IP is on white list
-bool ComponentIDS::isAuthorizated(const std::string& node_name)
+bool ComponentIDS::hasProperIP(const std::string& node_name)
 {
     std::string URI = getURI(node_name);
     std::size_t pos1 = URI.find("//");
-    std::string ip_port = URI.substr(pos1+2);
+    std::string ip_port = URI.substr(pos1+2);//fix string::npos.
     std::size_t pos2 = ip_port.find(":");
     std::string ip = ip_port.substr(0,pos2);
 
@@ -130,10 +127,32 @@ bool ComponentIDS::isAuthorizated(const std::string& node_name)
     }
     //TODO:
     //substr: __pos (which is 1) > this->size() (which is 0)
-    for(int i=0; i<this->par_pubs_.size(); ++i){
-        std::string pub_ip = par_pubs_[i];        
+    for(int i=0; i<this->par_IP_.size(); ++i){
+        std::string pub_ip = par_IP_[i];        
         if(pub_ip==ip) return true;
     }
+    return false;
+}
+
+// Check if node is on list of sub/pub of topic
+bool ComponentIDS::isOnList(const std::string& node_name, const std::string& topic_name, bool sub)
+{
+    XmlRpc::XmlRpcValue list;
+    if(sub) list = getParam("subscribers/"+topic_name);
+    else list = getParam("publishers/"+topic_name);
+    for(int i=0; i<list.size(); ++i)
+    {
+        if(node_name==static_cast<std::string>(list[i])) return true;
+    }
+    return false;
+    //ROS_WARN("Param: %s: %s", static_cast<std::string>(topic).c_str(), static_cast<std::string>(num[0]).c_str());
+    //int index = std::distance(arr, std::find(arr, arr + 5, 3));
+}
+
+// 
+bool ComponentIDS::isAuthorizated(const std::string& node_name,const std::string& topic_name, bool sub)
+{
+    if(hasProperIP(node_name) && isOnList(node_name,topic_name,sub)) return true;
     return false;
 }
 
@@ -158,6 +177,18 @@ void ComponentIDS::on_working()
     }
 }
 
+// Kill node if needed
+void killNode(std::string node)
+{
+    std::string command = "echo 'Would you like to kill it? y/n: '";
+    std::string response;
+    system(command.c_str());
+    std::cin>>response;
+    if(response=="y" || response=="Y"){
+        command = "rosnode kill " + node;
+        system(command.c_str());
+    }
+}
 
 //  Check if topic has only allowed subscribers
 void ComponentIDS::detectInterception(const std::string& topic,
@@ -168,17 +199,12 @@ void ComponentIDS::detectInterception(const std::string& topic,
         for (int s=0; s<sub.size(); ++s){
             std::string node = sub[s];
             //ROS_INFO("* node: %s", node.c_str());
-            if(!isAuthorizated(node)){
+            if(!isAuthorizated(node,topic, true)){
                 ROS_WARN("Unauthorizated node %s subscribe data from %s", node.c_str(), topic.c_str());
                 // kill that node
-                std::string command = "read -p 'Would you like to kill it? y/n: \n' command";
-                std::string response = exec(command.c_str());
-                ROS_INFO("response: %s", response.c_str());
-                //if(response=="y" || response=="Y"){
-                //command = "rosnode kill " + node;
-                //system(command.c_str());
-                //}
+                killNode(node);
             }
+
         }
     }
 }
@@ -192,17 +218,9 @@ void ComponentIDS::detectFabrication(const std::string& topic,
     if(pub.size()>0){
         for (int p=0; p<pub.size(); ++p){
             std::string node = pub[p];
-            if(!isAuthorizated(node)){
+            if(!isAuthorizated(node,topic, false)){
                 ROS_WARN("Unauthorizated node %s publish data on %s", node.c_str(), topic.c_str());
-                // kill that node
-                std::string command = "echo 'Would you like to kill it? y/n: '";
-                std::string response;
-                system(command.c_str());
-                std::cin>>response;
-                if(response=="y" || response=="Y"){
-                    command = "rosnode kill " + node;
-                    system(command.c_str());
-                }
+                killNode(node);
             }
         }
     }

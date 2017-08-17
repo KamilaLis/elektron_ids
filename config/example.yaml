@@ -1,0 +1,7 @@
+publishers:
+  chatter: ['/talker',]
+  rosout: ['/talker','/elektron_ids',]
+  rosout_agg: ['/rosout',]
+
+subscribers:
+  rosout: ['/rosout',]
