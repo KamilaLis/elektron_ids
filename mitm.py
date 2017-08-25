@@ -7,8 +7,8 @@ import time
 
 try:
     interface = "enp0s3"#raw_input("[*] Enter desired interface: ")
-    controlIP = "192.168.8.103"#raw_input("[*] Enter control IP: ")
-    robotIP = "192.168.8.102"#raw_input("[*] Enter robot IP: ")
+    controlIP = "192.168.1.164"#raw_input("[*] Enter control IP: ")
+    robotIP = "192.168.1.241"#raw_input("[*] Enter robot IP: ")
 except KeyboardInterrupt:
     print "\n[*] User requested shutdown"
     print "[*] Exiting..."
@@ -16,10 +16,6 @@ except KeyboardInterrupt:
     
 print "\n[*] Enabling IP forwarding... \n"
 os.system("echo 1 > /proc/sys/net/ipv4/ip_forward")
-
-#print "\n[*] Redirect traffic to the NFQUEUE... \n"
-#os.system("iptables -I INPUT -p tcp -d "+robotIP+" -j NFQUEUE --queue-num 1")
-#os.system("iptables -t nat -A PREROUTING -p tcp -j NFQUEUE --queue-num 1")
 
 
 def get_mac(IP):
