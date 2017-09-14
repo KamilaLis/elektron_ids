@@ -18,6 +18,7 @@ public:
 
     void detectInterception(const std::string &topic, XmlRpc::XmlRpcValue & publishers);
     void detectFabrication(const std::string &topic, XmlRpc::XmlRpcValue & subscribers);
+    void detectInterruption(const std::string& topic);
     void on_working();
 
     XmlRpc::XmlRpcValue getSystemState();

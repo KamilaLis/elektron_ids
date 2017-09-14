@@ -1,4 +1,5 @@
 #include "elektron_ids/ComponentIDS.h"
+#include "elektron_ids/EchoCallback.h"
 
 namespace elektron_ids {
 
@@ -87,7 +88,9 @@ XmlRpc::XmlRpcValue ComponentIDS::getPubsName(const std::string& topic,
     for(int i=0; i<publishers.size(); ++i){
         if(publishers[i][0]==topic) pub.push_back(publishers[i]);
     }
-    return pub[0][1];
+    if(!pub.empty()) return pub[0][1];
+    XmlRpc::XmlRpcValue empty();
+    return empty;
 }
 
 
@@ -162,11 +165,12 @@ bool ComponentIDS::isAuthorizated(const std::string& node_name,const std::string
 */
 void ComponentIDS::on_working()
 {
-    // pobierz listę wszystkich topicow (stan systemu?), na ktore ktos cos publikuje
+    // pobierz listę wszystkich topicow (stan systemu), na ktore ktos cos publikuje
     XmlRpc::XmlRpcValue system_state = getSystemState();
     // mozna by sprawdzic czy cos sie zmienilo od ostatniego sprawdzenia
     // jesli nie to wyjsc, jesli tak kontynuuj
-     // dla każdego sprawdz czy ma upowaznione pubsy i subsy
+    // dla każdego sprawdz czy ma upowaznione pubsy i subsy
+     /*
     for(int i=0; i<system_state[0].size(); ++i){
         std::string topic = system_state[0][i][0];
         //ROS_INFO("TOPIC: %s", topic.c_str());
@@ -175,6 +179,8 @@ void ComponentIDS::on_working()
         XmlRpc::XmlRpcValue & subscribers = system_state[1];
         detectInterception(topic, subscribers);
     }
+    */
+    detectInterruption("/chatter"); ///head_camera_rgb/image_raw
 }
 
 // Kill node if needed
@@ -215,7 +221,7 @@ void ComponentIDS::detectFabrication(const std::string& topic,
                              XmlRpc::XmlRpcValue & publishers)
 {
     XmlRpc::XmlRpcValue pub = getPubsName(topic, publishers);
-    if(pub.size()>0){
+    if(pub.getType()== XmlRpc::XmlRpcValue::TypeArray){
         for (int p=0; p<pub.size(); ++p){
             std::string node = pub[p];
             if(!isAuthorizated(node,topic, false)){
@@ -224,6 +230,30 @@ void ComponentIDS::detectFabrication(const std::string& topic,
             }
         }
     }
+}
+
+// Check if camera image is published
+void ComponentIDS::detectInterruption(const std::string& topic)
+{
+    //print warning if nothing received for two seconds
+    //bool use_sim_time = getParam("use_sim_time");
+    bool use_sim_time = true;
+
+    boost::shared_ptr<echo::EchoCallback> callback_echo(new echo::EchoCallback(topic));
+    if(use_sim_time)
+    {
+        ros::Time timeout = ros::Time::now() + ros::Duration(2.0);
+        while(ros::Time::now()<timeout)// && callback_echo.count_==0 && !callback_echo.done_)
+        {
+            ros::Duration(0.1).sleep();
+            ros::spinOnce();
+        }
+        if(callback_echo->count_==0 && !callback_echo->done_)
+        {
+            ROS_WARN("Potential interruption: no messages received on %s",topic.c_str());
+        }
+    }
+
 }
 
 }; /* namespace elektron_ids */
