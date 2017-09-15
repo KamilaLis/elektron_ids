@@ -16,12 +16,13 @@ class ComponentIDS
 public:
     ComponentIDS();
 
-    void detectInterception(const std::string &topic, XmlRpc::XmlRpcValue & publishers);
-    void detectFabrication(const std::string &topic, XmlRpc::XmlRpcValue & subscribers);
+    bool detectInterception(const std::string &topic, XmlRpc::XmlRpcValue & publishers);
+    bool detectFabrication(const std::string &topic, XmlRpc::XmlRpcValue & subscribers);
     void detectInterruption(const std::string& topic);
     void on_working();
 
     XmlRpc::XmlRpcValue getSystemState();
+    XmlRpc::XmlRpcValue getTopicType(const std::string& topic);
     XmlRpc::XmlRpcValue getURI(const std::string& node_name);
     XmlRpc::XmlRpcValue getParam(const std::string& param_name);
     XmlRpc::XmlRpcValue getPubsName(const std::string& topic, XmlRpc::XmlRpcValue & publishers);

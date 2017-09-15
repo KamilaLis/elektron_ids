@@ -23,6 +23,21 @@ XmlRpc::XmlRpcValue ComponentIDS::getSystemState()
     return payload;
 }
 
+// Get type of messages published on topic
+XmlRpc::XmlRpcValue ComponentIDS::getTopicType(const std::string& topic)
+{
+    XmlRpc::XmlRpcValue request("/component_ids");
+    XmlRpc::XmlRpcValue response;
+    XmlRpc::XmlRpcValue payload;
+
+    bool success = ros::master::execute("getTopicTypes", request,
+    response, payload, false);
+    // payload: [[topicName, topicType],...]
+    for (int i=0; i<payload.size(); ++i)
+    {
+        if (payload[i][0]== topic) return payload[i][1];
+    }
+}
 
 // Get XML-RPC URI of node
 XmlRpc::XmlRpcValue ComponentIDS::getURI(const std::string& node_name)
@@ -117,19 +132,22 @@ std::string exec(const char* cmd) {
 bool ComponentIDS::hasProperIP(const std::string& node_name)
 {
     std::string URI = getURI(node_name);
+    if (URI.size()<=7)
+    {// connection just has been finished (returns "http://")
+        return true;
+    }
     std::size_t pos1 = URI.find("//");
     std::string ip_port = URI.substr(pos1+2);//fix string::npos.
     std::size_t pos2 = ip_port.find(":");
     std::string ip = ip_port.substr(0,pos2);
-
-    if(ip.find(".") == std::string::npos){
+    
+    if(ip.find(".") == std::string::npos)
+    { // if it is host name instead of IP address
         std::string command = "getent hosts "+ip;
         std::string address = exec(command.c_str());
         std:size_t pos3 = address.find("       ");
         ip = address.substr(0,pos3);
     }
-    //TODO:
-    //substr: __pos (which is 1) > this->size() (which is 0)
     for(int i=0; i<this->par_IP_.size(); ++i){
         std::string pub_ip = par_IP_[i];        
         if(pub_ip==ip) return true;
@@ -170,21 +188,19 @@ void ComponentIDS::on_working()
     // mozna by sprawdzic czy cos sie zmienilo od ostatniego sprawdzenia
     // jesli nie to wyjsc, jesli tak kontynuuj
     // dla każdego sprawdz czy ma upowaznione pubsy i subsy
-     /*
     for(int i=0; i<system_state[0].size(); ++i){
         std::string topic = system_state[0][i][0];
         //ROS_INFO("TOPIC: %s", topic.c_str());
         XmlRpc::XmlRpcValue & publishers = system_state[0];
-        detectFabrication(topic, publishers);
+        if(detectFabrication(topic, publishers)) break;
         XmlRpc::XmlRpcValue & subscribers = system_state[1];
-        detectInterception(topic, subscribers);
+        if(detectInterception(topic, subscribers)) break;
     }
-    */
-    detectInterruption("/chatter"); ///head_camera_rgb/image_raw
+    detectInterruption("/head_camera_rgb/image_raw"); //
 }
 
-// Kill node if needed
-void killNode(std::string node)
+// Kill node if needed, return true if killed
+bool killNode(std::string node)
 {
     std::string command = "echo 'Would you like to kill it? y/n: '";
     std::string response;
@@ -193,11 +209,14 @@ void killNode(std::string node)
     if(response=="y" || response=="Y"){
         command = "rosnode kill " + node;
         system(command.c_str());
+        return true;
     }
+    // add node to white list
+    return false;
 }
 
 //  Check if topic has only allowed subscribers
-void ComponentIDS::detectInterception(const std::string& topic,
+bool ComponentIDS::detectInterception(const std::string& topic,
                              XmlRpc::XmlRpcValue & subscribers)
 {
     XmlRpc::XmlRpcValue sub = getSubsName(topic, subscribers);
@@ -208,16 +227,16 @@ void ComponentIDS::detectInterception(const std::string& topic,
             if(!isAuthorizated(node,topic, true)){
                 ROS_WARN("Unauthorizated node %s subscribe data from %s", node.c_str(), topic.c_str());
                 // kill that node
-                killNode(node);
+                if(killNode(node)) return true;
             }
-
         }
     }
+    return false;
 }
 
 
 // Check if topic has only allowed publishers
-void ComponentIDS::detectFabrication(const std::string& topic,
+bool ComponentIDS::detectFabrication(const std::string& topic,
                              XmlRpc::XmlRpcValue & publishers)
 {
     XmlRpc::XmlRpcValue pub = getPubsName(topic, publishers);
@@ -226,10 +245,11 @@ void ComponentIDS::detectFabrication(const std::string& topic,
             std::string node = pub[p];
             if(!isAuthorizated(node,topic, false)){
                 ROS_WARN("Unauthorizated node %s publish data on %s", node.c_str(), topic.c_str());
-                killNode(node);
+                if(killNode(node)) return true;
             }
         }
     }
+    return false;
 }
 
 // Check if camera image is published
@@ -238,7 +258,8 @@ void ComponentIDS::detectInterruption(const std::string& topic)
     //print warning if nothing received for two seconds
     //bool use_sim_time = getParam("use_sim_time");
     bool use_sim_time = true;
-
+    //std::string type = getTopicType(topic);
+    //ROS_INFO("Topic type: %s", static_cast<std::string>(getTopicType(topic)).c_str());
     boost::shared_ptr<echo::EchoCallback> callback_echo(new echo::EchoCallback(topic));
     if(use_sim_time)
     {

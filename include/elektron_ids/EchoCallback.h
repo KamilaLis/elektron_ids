@@ -31,29 +31,24 @@ public:
     }
 
 
-/*    void callback(const sensor_msgs::Image::ConstPtr& msg)
-    {
-        /*if(this->max_count_ && this->count_ >= this->max_count_)
-        {
-            this->done_=true;
-            return;
-        }
-        if(msg)
-        {
-            this->count_ += 1;
-            this->done_=true;
-        } 
-
-    }*/
-
-    void callback(const std_msgs::String::ConstPtr& msg)
+    void callback(const sensor_msgs::Image::ConstPtr& msg)
     {
         if(msg)
         {
             this->count_ += 1;
             this->done_=true;
         } 
+
     }
+
+    /*void callback(const std_msgs::String::ConstPtr& msg)
+    {
+        if(msg)
+        {
+            this->count_ += 1;
+            this->done_=true;
+        } 
+    }*/
 
 
 };
