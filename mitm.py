@@ -3,7 +3,6 @@ from scapy.all import *
 import sys
 import os
 import time
-#from netfilterqueue import NetfilterQueue
 
 try:
     interface = "enp0s3"#raw_input("[*] Enter desired interface: ")
