@@ -7,7 +7,7 @@
 //ROS
 #include <ros/ros.h>
 #include <sensor_msgs/Image.h>
-#include <std_msgs/String.h>
+#include <geometry_msgs/Twist.h>
 
 namespace echo
 {
@@ -27,11 +27,11 @@ public:
         count_(0)
     {
         ros::NodeHandle n;
-        sub_ = n.subscribe(topic, 1000, &EchoCallback::callback, this);
+        sub_ = n.subscribe(topic, 1000, &EchoCallback::callback_image, this);
     }
 
 
-    void callback(const sensor_msgs::Image::ConstPtr& msg)
+    void callback_image(const sensor_msgs::Image::ConstPtr& msg)
     {
         if(msg)
         {
@@ -41,14 +41,14 @@ public:
 
     }
 
-    /*void callback(const std_msgs::String::ConstPtr& msg)
+    void callback_control(const geometry_msgs::Twist::ConstPtr& msg)
     {
         if(msg)
         {
             this->count_ += 1;
             this->done_=true;
         } 
-    }*/
+    }
 
 
 };

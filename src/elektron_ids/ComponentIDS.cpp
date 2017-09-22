@@ -5,7 +5,14 @@ namespace elektron_ids {
 
 ComponentIDS::ComponentIDS()
 {
-    this->par_IP_ = getParam("while_list");
+    // Read local parameters
+    ros::NodeHandle local_nh("~");
+
+    par_IP_ = getParam("while_list");
+    camera_image_ = static_cast<std::string>(getParam("camera_image"));
+
+    // advertise
+    warn_pub_ = local_nh.advertise<std_msgs::String>("warnings", 1);
 }
 
 // Retrieve list representation of system state (i.e. publishers, subscribers, and services).
@@ -156,27 +163,44 @@ bool ComponentIDS::hasProperIP(const std::string& node_name)
 }
 
 // Check if node is on list of sub/pub of topic
-bool ComponentIDS::isOnList(const std::string& node_name, const std::string& topic_name, bool sub)
+bool ComponentIDS::isOnWhiteList(const std::string& node_name, const std::string& topic_name, bool sub)
 {
     XmlRpc::XmlRpcValue list;
-    if(sub) list = getParam("subscribers/"+topic_name);
-    else list = getParam("publishers/"+topic_name);
-    for(int i=0; i<list.size(); ++i)
-    {
-        if(node_name==static_cast<std::string>(list[i])) return true;
+    try{
+        if(sub) list = getParam("subscribers/"+topic_name);
+        else list = getParam("publishers/"+topic_name);
+        for(int i=0; i<list.size(); ++i)
+        {
+            if(node_name==static_cast<std::string>(list[i])) return true;
+        }
+        return false;
     }
-    return false;
-    //ROS_WARN("Param: %s: %s", static_cast<std::string>(topic).c_str(), static_cast<std::string>(num[0]).c_str());
-    //int index = std::distance(arr, std::find(arr, arr + 5, 3));
+    catch (const std::runtime_error& error)
+    {
+        ROS_WARN("%s not found in whitelist", topic_name.c_str());
+    }
 }
 
 // 
 bool ComponentIDS::isAuthorizated(const std::string& node_name,const std::string& topic_name, bool sub)
 {
-    if(hasProperIP(node_name) && isOnList(node_name,topic_name,sub)) return true;
+    if((hasProperIP(node_name) && isOnWhiteList(node_name,topic_name,sub)) || isOnGrayList(node_name)){
+        return true;
+    } 
     return false;
 }
 
+// Check if user wanted this node to stay 
+bool ComponentIDS::isOnGrayList(const std::string& node)
+{
+    return std::find(grayList.begin(), grayList.end(), node)!= grayList.end();
+}
+
+
+void ComponentIDS::addToGrayList(const std::string& node)
+{
+    grayList.push_back(node);
+}
 
 /*
 *  ON WORKING
@@ -196,11 +220,11 @@ void ComponentIDS::on_working()
         XmlRpc::XmlRpcValue & subscribers = system_state[1];
         if(detectInterception(topic, subscribers)) break;
     }
-    detectInterruption("/head_camera_rgb/image_raw"); //
+    detectInterruption(this->camera_image_);//"/head_camera_rgb/image_raw"); 
 }
 
 // Kill node if needed, return true if killed
-bool killNode(std::string node)
+bool ComponentIDS::killNode(const std::string& node)
 {
     std::string command = "echo 'Would you like to kill it? y/n: '";
     std::string response;
@@ -209,9 +233,12 @@ bool killNode(std::string node)
     if(response=="y" || response=="Y"){
         command = "rosnode kill " + node;
         system(command.c_str());
+        warn("Killed node: "+node);
         return true;
     }
-    // add node to white list
+    // add node to gray list
+    addToGrayList(node);
+    warn("Node "+node+" added to grayList");
     return false;
 }
 
@@ -272,9 +299,18 @@ void ComponentIDS::detectInterruption(const std::string& topic)
         if(callback_echo->count_==0 && !callback_echo->done_)
         {
             ROS_WARN("Potential interruption: no messages received on %s",topic.c_str());
+            warn("Potential interruption: no messages received on "+topic);
         }
     }
 
+}
+
+// Send warning to warn_pub
+void ComponentIDS::warn(const std::string& msg)
+{
+    std_msgs::String message;
+    message.data = msg.c_str();
+    warn_pub_.publish(message);
 }
 
 }; /* namespace elektron_ids */

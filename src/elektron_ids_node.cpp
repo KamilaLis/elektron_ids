@@ -25,7 +25,7 @@ std::string saveNodeWhiteList(XmlRpc::XmlRpcValue system_state, bool sub)
 
 int main(int argc, char* argv[]) {
     
-    ros::init(argc, argv, "component_ids");
+    ros::init(argc, argv, "elektron_ids");
     ros::NodeHandle n;
 
     elektron_ids::ComponentIDS component_ids;
@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
     else
     {
         ROS_INFO("ELEKTRON_IDS STARTED !!");
-
+        
         // ROS loop
         ros::Rate rate(20.0);
 
