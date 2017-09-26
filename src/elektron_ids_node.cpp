@@ -32,9 +32,11 @@ int main(int argc, char* argv[]) {
 
     if(static_cast<std::string>(argv[1])=="save")
     {
-    // saving state to file
+    // saving state to file (nodes)
         std::ofstream myfile;
-        myfile.open ("/home/klis/STUDIA/catkin_ws/src/elektron_ids/config/example.yaml");
+        std::string filename = argv[2];
+        myfile.open(filename);
+        if(!myfile.is_open()) ROS_INFO("Could not open configuration file!");
 
         XmlRpc::XmlRpcValue system_state = component_ids.getSystemState();
 

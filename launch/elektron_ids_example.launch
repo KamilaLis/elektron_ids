@@ -1,5 +1,6 @@
 <launch>
 
+    <!-- arguments -->
     <arg name="mode"
          default="ids" />
     <arg name="name"
@@ -10,21 +11,17 @@
          default="$(find elektron_ids)/config/example.yaml"  />
 
     <!-- parameters -->
-    <!--rosparam  command="load"
-               ns="$(arg name)"
-               file="$(arg config_file)"  /-->
-
     <rosparam file="$(arg config_file)" command="load" ns="$(arg name)" />
     <rosparam file="$(arg config_file_nodes)" command="load" ns="$(arg name)" />
 
-    <!--node pkg="talker" name="talker" type="talker.py" output="screen"/-->
+    <!-- logger -->
+    <node name="logger" pkg="logger" type="logger.py" />
 
-               
-    <!-- node -->
+    <!-- elektron_ids -->
     <node name="$(arg name)"
           pkg="elektron_ids"
           type="elektron_ids_node"
           output="screen"
           respawn="true" 
-          args="$(arg mode)" />
+          args="$(arg mode) $(arg config_file_nodes)" />
 </launch>

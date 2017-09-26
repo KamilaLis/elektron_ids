@@ -1,7 +1,8 @@
 publishers:
-  chatter: ['/talker',]
-  rosout: ['/talker','/elektron_ids',]
+  elektron_ids/warnings: ['/elektron_ids',]
+  rosout: ['/logger','/elektron_ids',]
   rosout_agg: ['/rosout',]
 
 subscribers:
+  elektron_ids/warnings: ['/logger',]
   rosout: ['/rosout',]
