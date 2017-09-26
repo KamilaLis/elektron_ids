@@ -152,13 +152,14 @@ bool ComponentIDS::hasProperIP(const std::string& node_name)
     { // if it is host name instead of IP address
         std::string command = "getent hosts "+ip;
         std::string address = exec(command.c_str());
-        std:size_t pos3 = address.find("       ");
+        std:size_t pos3 = address.find(" ");
         ip = address.substr(0,pos3);
     }
     for(int i=0; i<this->par_IP_.size(); ++i){
         std::string pub_ip = par_IP_[i];        
         if(pub_ip==ip) return true;
     }
+    ROS_INFO("NODE %s IP: %s", node_name.c_str(), ip.c_str());
     return false;
 }
 
