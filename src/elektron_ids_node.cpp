@@ -1,5 +1,8 @@
 #include <fstream>
+
+#include <signal.h>
 #include <ros/ros.h>
+#include <ros/xmlrpc_manager.h>
 
 #include "elektron_ids/ComponentIDS.h"
 
@@ -21,12 +24,31 @@ std::string saveNodeWhiteList(XmlRpc::XmlRpcValue system_state, bool sub)
     return list;
 }
 
+// Replacement "shutdown" XMLRPC callback
+void shutdownCallback(XmlRpc::XmlRpcValue& params, XmlRpc::XmlRpcValue& result)
+{
+  int num_params = 0;
+  if (params.getType() == XmlRpc::XmlRpcValue::TypeArray)
+    num_params = params.size();
+  if (num_params > 1)
+  {
+    std::string reason = params[1];
+    ROS_WARN("Shutdown request received. Reason: [%s]", reason.c_str());
+    //g_request_shutdown = 1; // Set flag
+  }
+
+  result = ros::xmlrpc::responseInt(1, "", 0);
+}
+
 
 
 int main(int argc, char* argv[]) {
     
     ros::init(argc, argv, "elektron_ids");
-    ros::NodeHandle n;
+
+    // self defense: Override XMLRPC shutdown (used by rosnode kill)
+    ros::XMLRPCManager::instance()->unbind("shutdown");
+    ros::XMLRPCManager::instance()->bind("shutdown", shutdownCallback);
 
     elektron_ids::ComponentIDS component_ids;
 
@@ -60,10 +82,15 @@ int main(int argc, char* argv[]) {
         while (ros::ok())
         {
             component_ids.on_working();
+            ros::spinOnce();
             rate.sleep();
         }
 
     }//else
+
+    // Do pre-shutdown tasks
+
+    
 
 }//main
 
