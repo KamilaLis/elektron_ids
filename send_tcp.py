@@ -15,7 +15,7 @@ payload="stuff"
 PUSH=TCP(sport=1050, dport=4000, flags="PA", seq=11, ack=my_ack)
 send(ip/PUSH/payload)'''
 
-#
+# catch SYN packet from master
 SYN=sniff(count=1,filter="host 192.168.1.164 and tcp[tcpflags] & tcp-syn != 0")
 print SYN[0].summary()
 
