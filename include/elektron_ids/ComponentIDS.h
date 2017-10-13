@@ -31,7 +31,7 @@ public:
     XmlRpc::XmlRpcValue getParam(const std::string& param_name);
     XmlRpc::XmlRpcValue getPubsName(const std::string& topic, XmlRpc::XmlRpcValue & publishers);
     XmlRpc::XmlRpcValue getSubsName(const std::string& topic, XmlRpc::XmlRpcValue & subscribers);
-    bool isAuthorizated(const std::string& node_name,const std::string& topic_name, bool sub);
+    bool isAuthorizated(const std::string& node_name,const std::string& topic_name,XmlRpc::XmlRpcValue par);
     bool killNode(const std::string& node);
 
 private:
@@ -40,10 +40,12 @@ private:
 
     // parameters
     XmlRpc::XmlRpcValue par_IP_;
+    XmlRpc::XmlRpcValue par_subscribers_;
+    XmlRpc::XmlRpcValue par_publishers_;
     std::string camera_image_;
 
     bool hasProperIP(const std::string& node_name);
-    bool isOnWhiteList(const std::string& node_name, const std::string& topic_name, bool sub);
+    bool isOnWhiteList(const std::string& node_name, const std::string& topic_name, XmlRpc::XmlRpcValue par);
 
     // gray list
     std::vector<std::string> grayList;

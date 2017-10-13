@@ -9,7 +9,20 @@ ComponentIDS::ComponentIDS()
     ros::NodeHandle local_nh("~");
 
     par_IP_ = getParam("while_list");
+    par_subscribers_ = getParam("subscribers");
+    par_publishers_ = getParam("publishers");
     camera_image_ = static_cast<std::string>(getParam("camera_image"));
+
+    ROS_ASSERT(par_subscribers_.getType() == XmlRpc::XmlRpcValue::TypeStruct);
+    ROS_ASSERT(par_publishers_.getType() == XmlRpc::XmlRpcValue::TypeStruct);
+
+    /*for(XmlRpc::XmlRpcValue::ValueStruct::const_iterator it = par_publishers_.begin(); it != par_publishers_.end(); ++it) 
+    {
+    ROS_INFO_STREAM("Found par_publishers_: " << (std::string)(it->first) << " ==> " << par_publishers_[it->first]);
+    }
+    ROS_INFO_STREAM("node elek_ids: " << par_publishers_["elektron_ids"]);//["warnings"][0]); 
+    ROS_INFO_STREAM("node elek_ids: " << par_publishers_["elektron_ids"]["warnings"]);//[0]); 
+    ROS_INFO_STREAM("node elek_ids: " << par_publishers_["elektron_ids"]["warnings"][0]); */
 
     // advertise
     warn_pub_ = local_nh.advertise<std_msgs::String>("warnings", 1);
@@ -163,16 +176,36 @@ bool ComponentIDS::hasProperIP(const std::string& node_name)
     return false;
 }
 
-// Check if node is on list of sub/pub of topic
-bool ComponentIDS::isOnWhiteList(const std::string& node_name, const std::string& topic_name, bool sub)
+// Get params from struct as array
+XmlRpc::XmlRpcValue getListFromPar(XmlRpc::XmlRpcValue par, 
+                    const std::string& topic_name)
 {
-    XmlRpc::XmlRpcValue list;
+    std::string str = "/";
+    std::size_t pos = topic_name.find(str);
+    if(pos!=std::string::npos)
+    { //there is '/' in topic name
+        return getListFromPar(par[topic_name.substr(0,pos)],topic_name.substr(pos+str.length()));
+    }
+    else
+    {
+        XmlRpc::XmlRpcValue list (par[topic_name]);
+        ROS_ASSERT(list.getType() == XmlRpc::XmlRpcValue::TypeArray);
+        return list;
+    }
+}
+
+
+// Check if node is on list of sub/pub of topic
+bool ComponentIDS::isOnWhiteList(const std::string& node_name, const std::string& topic_name, XmlRpc::XmlRpcValue par)
+{
     try{
-        if(sub) list = getParam("subscribers/"+topic_name);
-        else list = getParam("publishers/"+topic_name);
-        for(int i=0; i<list.size(); ++i)
+        //if(sub) list = getParam("subscribers/"+topic_name);
+        //else list = getParam("publishers/"+topic_name);
+
+        XmlRpc::XmlRpcValue nodes = getListFromPar(par,topic_name.substr(1));
+        for(int i=0; i<nodes.size(); ++i)
         {
-            if(node_name==static_cast<std::string>(list[i])) return true;
+            if(node_name==static_cast<std::string>(nodes[i])) return true;
         }
         return false;
     }
@@ -183,9 +216,9 @@ bool ComponentIDS::isOnWhiteList(const std::string& node_name, const std::string
 }
 
 // 
-bool ComponentIDS::isAuthorizated(const std::string& node_name,const std::string& topic_name, bool sub)
+bool ComponentIDS::isAuthorizated(const std::string& node_name,const std::string& topic_name, XmlRpc::XmlRpcValue par)
 {
-    if((hasProperIP(node_name) && isOnWhiteList(node_name,topic_name,sub)) || isOnGrayList(node_name)){
+    if((hasProperIP(node_name) && isOnWhiteList(node_name,topic_name,par)) || isOnGrayList(node_name)){
         return true;
     } 
     return false;
@@ -252,7 +285,7 @@ bool ComponentIDS::detectInterception(const std::string& topic,
         for (int s=0; s<sub.size(); ++s){
             std::string node = sub[s];
             //ROS_INFO("* node: %s", node.c_str());
-            if(!isAuthorizated(node,topic, true)){
+            if(!isAuthorizated(node,topic,par_subscribers_)){
                 ROS_WARN("Unauthorizated node %s subscribe data from %s", node.c_str(), topic.c_str());
                 // kill that node
                 if(killNode(node)) return true;
@@ -271,7 +304,7 @@ bool ComponentIDS::detectFabrication(const std::string& topic,
     if(pub.getType()== XmlRpc::XmlRpcValue::TypeArray){
         for (int p=0; p<pub.size(); ++p){
             std::string node = pub[p];
-            if(!isAuthorizated(node,topic, false)){
+            if(!isAuthorizated(node,topic,par_publishers_)){
                 ROS_WARN("Unauthorizated node %s publish data on %s", node.c_str(), topic.c_str());
                 if(killNode(node)) return true;
             }
@@ -306,7 +339,7 @@ void ComponentIDS::detectInterruption(const std::string& topic)
 
 }
 
-// Send warning to warn_pub
+// Log warning in diagnostics
 void ComponentIDS::warn(const std::string& msg)
 {
     std_msgs::String message;
