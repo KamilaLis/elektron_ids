@@ -21,11 +21,17 @@ ComponentIDS::ComponentIDS()
     ROS_INFO_STREAM("Found par_publishers_: " << (std::string)(it->first) << " ==> " << par_publishers_[it->first]);
     }
     ROS_INFO_STREAM("node elek_ids: " << par_publishers_["elektron_ids"]);//["warnings"][0]); 
-    ROS_INFO_STREAM("node elek_ids: " << par_publishers_["elektron_ids"]["warnings"]);//[0]); 
-    ROS_INFO_STREAM("node elek_ids: " << par_publishers_["elektron_ids"]["warnings"][0]); */
+     */
+    std::string command = "rosnode list";
+    std::string pid_str = exec(command.c_str());
+    //ROS_INFO("rosnode list: %s", pid_str.c_str());
+
+    nodes_ = getNodes(getSystemState());
+    for(auto elem : nodes_)
+        ROS_INFO("%s, %d",(elem.first).c_str(), elem.second);
 
     // advertise
-    warn_pub_ = local_nh.advertise<std_msgs::String>("warnings", 1);
+    warn_pub_ = local_nh.advertise<diagnostic_msgs::DiagnosticStatus>("warnings", 1);
 }
 
 // Retrieve list representation of system state (i.e. publishers, subscribers, and services).
@@ -42,6 +48,7 @@ XmlRpc::XmlRpcValue ComponentIDS::getSystemState()
     ROS_ASSERT(payload.size() == 3);
     return payload;
 }
+
 
 // Get type of messages published on topic
 XmlRpc::XmlRpcValue ComponentIDS::getTopicType(const std::string& topic)
@@ -72,6 +79,17 @@ XmlRpc::XmlRpcValue ComponentIDS::getURI(const std::string& node_name)
     response, payload, false);
 
     return payload;
+}
+
+// TODO: niezbyt to eleganckie
+// Get the PID of node 
+int ComponentIDS::getPid(const std::string& node)
+{
+    //std::string command = "pgrep " + node.substr(1);
+    std::string command = "rosnode info "+node+" 2>/dev/null | grep Pid| cut -d' ' -f2";
+    std::string pid_str = exec(command.c_str());  
+    //ROS_INFO("getPid: %s, %s", node.c_str(), pid_str.c_str());
+    return atoi(pid_str.c_str());
 }
 
 
@@ -129,8 +147,33 @@ XmlRpc::XmlRpcValue ComponentIDS::getPubsName(const std::string& topic,
 }
 
 
+// Get all nodes
+std::map<std::string,int> ComponentIDS::getNodes(XmlRpc::XmlRpcValue system_state)
+{
+    std::set<std::string> node_set;
+    for(int i=0; i<system_state.size(); ++i)
+    {
+        for(int j = 0; j < system_state[i].size(); ++j)
+        {
+            XmlRpc::XmlRpcValue val = system_state[i][j][1];
+            for (int k = 0; k < val.size(); ++k)
+            {
+                std::string name = system_state[i][j][1][k];
+                node_set.insert(name);                
+            }
+        }
+    }
+    std::map<std::string,int> nodes;
+    for(auto n : node_set)
+    {
+        nodes.insert(std::pair<std::string,int>(n,getPid(n)));
+    }
+    return nodes;
+}
+
+
 // Get return value from system()
-std::string exec(const char* cmd) {
+std::string ComponentIDS::exec(const char* cmd) {
     char buffer[128];
     std::string result = "";
     FILE* pipe = popen(cmd, "r");
@@ -175,6 +218,14 @@ bool ComponentIDS::hasProperIP(const std::string& node_name)
     ROS_INFO("NODE %s IP: %s", node_name.c_str(), ip.c_str());
     return false;
 }
+
+// UNUSED
+// Check if node's PID is the same as in nodes_ map
+bool ComponentIDS::hasProperPid(const std::string& node)
+{
+    return nodes_[node] == getPid(node);
+}
+
 
 // Get params from struct as array
 XmlRpc::XmlRpcValue getListFromPar(XmlRpc::XmlRpcValue par, 
@@ -234,6 +285,7 @@ bool ComponentIDS::isOnGrayList(const std::string& node)
 void ComponentIDS::addToGrayList(const std::string& node)
 {
     grayList.push_back(node);
+    nodes_[node] = getPid(node);
 }
 
 /*
@@ -241,20 +293,19 @@ void ComponentIDS::addToGrayList(const std::string& node)
 */
 void ComponentIDS::on_working()
 {
-    // pobierz listę wszystkich topicow (stan systemu), na ktore ktos cos publikuje
     XmlRpc::XmlRpcValue system_state = getSystemState();
-    // mozna by sprawdzic czy cos sie zmienilo od ostatniego sprawdzenia
-    // jesli nie to wyjsc, jesli tak kontynuuj
-    // dla każdego sprawdz czy ma upowaznione pubsy i subsy
+    std::map<std::string,int> current_nodes = getNodes(system_state);
+
+    detectNodeSubstitution(current_nodes);
+    detectInterruption(this->camera_image_);
+
     for(int i=0; i<system_state[0].size(); ++i){
         std::string topic = system_state[0][i][0];
-        //ROS_INFO("TOPIC: %s", topic.c_str());
         XmlRpc::XmlRpcValue & publishers = system_state[0];
         if(detectFabrication(topic, publishers)) break;
         XmlRpc::XmlRpcValue & subscribers = system_state[1];
         if(detectInterception(topic, subscribers)) break;
     }
-    detectInterruption(this->camera_image_);//"/head_camera_rgb/image_raw"); 
 }
 
 // Kill node if needed, return true if killed
@@ -267,16 +318,40 @@ bool ComponentIDS::killNode(const std::string& node)
     if(response=="y" || response=="Y"){
         command = "rosnode kill " + node;
         system(command.c_str());
-        warn("Killed node: "+node);
+        ok("Node "+ node +" killed by operator.");
         return true;
     }
     // add node to gray list
     addToGrayList(node);
-    warn("Node "+node+" added to grayList");
+    ok("Node "+ node +" accepted by operator. Added to grayList.");
     return false;
 }
 
-//  Check if topic has only allowed subscribers
+// Check if nodes from nodes_ are working with right pid
+void ComponentIDS::detectNodeSubstitution(std::map<std::string,int> current_nodes)
+{
+    std::string msg = std::string();
+    for(auto elem : nodes_)
+    {
+        std::string node = elem.first;
+        int pid = elem.second;
+
+        if(current_nodes.find(node) == current_nodes.end())
+        { // node from nodes_ is not alive
+            ROS_WARN("Node %s seems to be killed",(node).c_str());
+            error("Node "+ node +" seems to be killed");
+        }
+        else if(current_nodes[node] != pid)
+        { // node has wrong pid 
+            ROS_WARN("Registered new node instead of %s",(node).c_str());
+            error("Registered new node instead of "+ node +".");
+            killNode(node);
+        }
+    }
+}
+
+
+//  Check if topic has only allowed subscribers (detect new nodes)
 bool ComponentIDS::detectInterception(const std::string& topic,
                              XmlRpc::XmlRpcValue & subscribers)
 {
@@ -284,7 +359,6 @@ bool ComponentIDS::detectInterception(const std::string& topic,
     if(sub.getType()== XmlRpc::XmlRpcValue::TypeArray){
         for (int s=0; s<sub.size(); ++s){
             std::string node = sub[s];
-            //ROS_INFO("* node: %s", node.c_str());
             if(!isAuthorizated(node,topic,par_subscribers_)){
                 ROS_WARN("Unauthorizated node %s subscribe data from %s", node.c_str(), topic.c_str());
                 // kill that node
@@ -315,12 +389,8 @@ bool ComponentIDS::detectFabrication(const std::string& topic,
 
 // Check if camera image is published
 void ComponentIDS::detectInterruption(const std::string& topic)
-{
-    //print warning if nothing received for two seconds
-    //bool use_sim_time = getParam("use_sim_time");
+{   //print warning if nothing received for two seconds
     bool use_sim_time = true;
-    //std::string type = getTopicType(topic);
-    //ROS_INFO("Topic type: %s", static_cast<std::string>(getTopicType(topic)).c_str());
     boost::shared_ptr<echo::EchoCallback> callback_echo(new echo::EchoCallback(topic));
     if(use_sim_time)
     {
@@ -339,12 +409,42 @@ void ComponentIDS::detectInterruption(const std::string& topic)
 
 }
 
+// Send info to diagnostics topic
+void ComponentIDS::sendDiagnosticMsg(const std::string& msg, int level)
+{
+    diagnostic_msgs::DiagnosticStatus message;
+    message.level = level;
+    message.name = "IDS";
+    message.message = msg.c_str();
+    diagnostic_msgs::KeyValue values;
+    values.key = "rosTime";
+    values.value = std::to_string(ros::Time::now().toSec());
+    message.values = {values};
+    warn_pub_.publish(message);
+}
+
+/*
+Possible levels of operations
+    byte OK=0
+    byte WARN=1
+    byte ERROR=2
+    byte STALE=3
+*/
+
 // Log warning in diagnostics
 void ComponentIDS::warn(const std::string& msg)
 {
-    std_msgs::String message;
-    message.data = msg.c_str();
-    warn_pub_.publish(message);
+    sendDiagnosticMsg(msg, 1);
+}
+
+void ComponentIDS::error(const std::string& msg)
+{
+    sendDiagnosticMsg(msg, 2);
+}
+
+void ComponentIDS::ok(const std::string& msg)
+{
+    sendDiagnosticMsg(msg, 0);
 }
 
 }; /* namespace elektron_ids */

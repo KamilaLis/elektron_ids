@@ -46,7 +46,7 @@ int main(int argc, char* argv[]) {
     
     ros::init(argc, argv, "elektron_ids");
 
-    // self defense: Override XMLRPC shutdown (used by rosnode kill)
+    // override XMLRPC shutdown (used by rosnode kill)
     ros::XMLRPCManager::instance()->unbind("shutdown");
     ros::XMLRPCManager::instance()->bind("shutdown", shutdownCallback);
 

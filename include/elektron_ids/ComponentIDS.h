@@ -6,7 +6,7 @@
 
 //ROS
 #include <ros/ros.h>
-#include <std_msgs/String.h>
+#include <diagnostic_msgs/DiagnosticStatus.h>
 
 //#include <sstream>
 #include "XmlRpc.h"
@@ -18,21 +18,31 @@ class ComponentIDS
 {
 public:
     ComponentIDS();
+    void on_working();
+
+    void detectNodeSubstitution(std::map<std::string,int> current_nodes);
 
     bool detectInterception(const std::string &topic, XmlRpc::XmlRpcValue & publishers);
     bool detectFabrication(const std::string &topic, XmlRpc::XmlRpcValue & subscribers);
     void detectInterruption(const std::string& topic);
+    void sendDiagnosticMsg(const std::string& msg, int level);
     void warn(const std::string& msg);
-    void on_working();
+    void error(const std::string& msg);
+    void ok(const std::string& msg);
+
 
     XmlRpc::XmlRpcValue getSystemState();
     XmlRpc::XmlRpcValue getTopicType(const std::string& topic);
     XmlRpc::XmlRpcValue getURI(const std::string& node_name);
+    int getPid(const std::string& node);
     XmlRpc::XmlRpcValue getParam(const std::string& param_name);
     XmlRpc::XmlRpcValue getPubsName(const std::string& topic, XmlRpc::XmlRpcValue & publishers);
     XmlRpc::XmlRpcValue getSubsName(const std::string& topic, XmlRpc::XmlRpcValue & subscribers);
+    std::map<std::string,int> getNodes(XmlRpc::XmlRpcValue system_state);
     bool isAuthorizated(const std::string& node_name,const std::string& topic_name,XmlRpc::XmlRpcValue par);
     bool killNode(const std::string& node);
+
+    
 
 private:
     // publisher
@@ -44,9 +54,13 @@ private:
     XmlRpc::XmlRpcValue par_publishers_;
     std::string camera_image_;
 
-    bool hasProperIP(const std::string& node_name);
-    bool isOnWhiteList(const std::string& node_name, const std::string& topic_name, XmlRpc::XmlRpcValue par);
+    std::map<std::string,int> nodes_;
 
+    std::string exec(const char* cmd);
+    bool hasProperIP(const std::string& node_name);
+    bool hasProperPid(const std::string& node);
+    bool isOnWhiteList(const std::string& node_name, const std::string& topic_name, XmlRpc::XmlRpcValue par);
+    
     // gray list
     std::vector<std::string> grayList;
     bool isOnGrayList(const std::string& node);
