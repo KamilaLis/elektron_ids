@@ -1,14 +1,17 @@
 <launch>
 
     <!-- arguments -->
-    <arg name="mode"
-         default="ids" />
+    <arg name="save"
+         default="false" />
     <arg name="name"
          default="elektron_ids"  />
     <arg name="config_file"
          default="$(find elektron_ids)/config/elektron_ids_example.yaml"  />
     <arg name="config_file_nodes"
          default="$(find elektron_ids)/config/example.yaml"  />
+
+
+    <!--arg name="respawn" value="false" unless="$(arg save)"/-->
 
     <!-- parameters -->
     <rosparam file="$(arg config_file)" command="load" ns="$(arg name)" />
@@ -17,11 +20,24 @@
     <!-- logger -->
     <node name="logger" pkg="logger" type="logger.py" />
 
+    <!-- visual_odom >
+    <include file="$(find visual_odom)/launch/example.launch" /-->
+
     <!-- elektron_ids -->
     <node name="$(arg name)"
           pkg="elektron_ids"
           type="elektron_ids_node"
           output="screen"
-          respawn="true" 
-          args="$(arg mode) $(arg config_file_nodes)" />
+          respawn="false" 
+          args="$(arg save) $(arg config_file_nodes)" />
+
+    <!-- it is remote launch -->
+    <!-- limits -->
+    <include file="$(find limits)/launch/remote.launch" >
+        <arg name="machine_name" 
+             value="robot"  />
+        <arg name="machine_address" 
+             value="192.168.1.241"  />
+    </include>
+
 </launch>

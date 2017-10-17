@@ -27,11 +27,11 @@ ComponentIDS::ComponentIDS()
     //ROS_INFO("rosnode list: %s", pid_str.c_str());
 
     nodes_ = getNodes(getSystemState());
-    for(auto elem : nodes_)
-        ROS_INFO("%s, %d",(elem.first).c_str(), elem.second);
+    //for(auto elem : nodes_)
+    //    ROS_INFO("%s, %d",(elem.first).c_str(), elem.second);
 
     // advertise
-    warn_pub_ = local_nh.advertise<diagnostic_msgs::DiagnosticStatus>("warnings", 1);
+    diagnostic_pub_ = local_nh.advertise<diagnostic_msgs::DiagnosticStatus>("warnings", 1);
 }
 
 // Retrieve list representation of system state (i.e. publishers, subscribers, and services).
@@ -85,10 +85,8 @@ XmlRpc::XmlRpcValue ComponentIDS::getURI(const std::string& node_name)
 // Get the PID of node 
 int ComponentIDS::getPid(const std::string& node)
 {
-    //std::string command = "pgrep " + node.substr(1);
     std::string command = "rosnode info "+node+" 2>/dev/null | grep Pid| cut -d' ' -f2";
     std::string pid_str = exec(command.c_str());  
-    //ROS_INFO("getPid: %s, %s", node.c_str(), pid_str.c_str());
     return atoi(pid_str.c_str());
 }
 
@@ -200,7 +198,7 @@ bool ComponentIDS::hasProperIP(const std::string& node_name)
         return true;
     }
     std::size_t pos1 = URI.find("//");
-    std::string ip_port = URI.substr(pos1+2);//fix string::npos.
+    std::string ip_port = URI.substr(pos1+2);
     std::size_t pos2 = ip_port.find(":");
     std::string ip = ip_port.substr(0,pos2);
     
@@ -414,13 +412,13 @@ void ComponentIDS::sendDiagnosticMsg(const std::string& msg, int level)
 {
     diagnostic_msgs::DiagnosticStatus message;
     message.level = level;
-    message.name = "IDS";
+    message.name = "IDS:operator";
     message.message = msg.c_str();
     diagnostic_msgs::KeyValue values;
     values.key = "rosTime";
     values.value = std::to_string(ros::Time::now().toSec());
     message.values = {values};
-    warn_pub_.publish(message);
+    diagnostic_pub_.publish(message);
 }
 
 /*

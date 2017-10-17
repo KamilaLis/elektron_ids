@@ -13,8 +13,7 @@ std::string saveNodeWhiteList(XmlRpc::XmlRpcValue system_state, bool sub)
     for(int i=0; i<system_state[sub].size(); ++i)
     {
         std::string topic = system_state[sub][i][0];
-        //std::string size = std::to_string(system_state[0][i][1].size());
-        std::string line = "  "+topic.substr(1) + ": [";//+size+"\n";
+        std::string line = "  "+topic.substr(1) + ": [";
         for(int x=0; x<system_state[sub][i][1].size(); ++x)
         {
             line = line + "'"+ static_cast<std::string>(system_state[sub][i][1][x]) +"',";
@@ -52,7 +51,7 @@ int main(int argc, char* argv[]) {
 
     elektron_ids::ComponentIDS component_ids;
 
-    if(static_cast<std::string>(argv[1])=="save")
+    if(static_cast<std::string>(argv[1])=="true")
     {
     // saving state to file (nodes)
         std::ofstream myfile;
@@ -71,9 +70,10 @@ int main(int argc, char* argv[]) {
         myfile << list;
 
         myfile.close();
+        ROS_INFO("White list sucessfully saved!");
     }
     else
-    {
+    { // start ids
         ROS_INFO("ELEKTRON_IDS STARTED !!");
         
         // ROS loop
@@ -85,13 +85,7 @@ int main(int argc, char* argv[]) {
             ros::spinOnce();
             rate.sleep();
         }
-
-    }//else
-
-    // Do pre-shutdown tasks
-
-    
-
-}//main
+    }
+}
 
 
