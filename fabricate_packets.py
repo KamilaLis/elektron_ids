@@ -54,7 +54,6 @@ def changeIP(pkt):
 print "\n[*] Redirect traffic to the NFQUEUE... \n"
 os.system("ip link set dev enp0s3 promisc on")
 os.system("iptables -A OUTPUT -p tcp -d 192.168.1.241 -j NFQUEUE --queue-num 1")
-os.system("iptables -A FORWARD -p tcp -s 192.168.1.241 -j NFQUEUE --queue-num 1")
 
 interface = "enp0s3"
 controlIP = "192.168.1.164"
