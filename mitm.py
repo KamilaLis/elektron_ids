@@ -6,8 +6,8 @@ import time
 
 try:
     interface = "enp0s3"#raw_input("[*] Enter desired interface: ")
-    controlIP = "192.168.1.164"#raw_input("[*] Enter control IP: ")
-    robotIP = "192.168.1.241"#raw_input("[*] Enter robot IP: ")
+    controlIP = "192.168.1.241"#raw_input("[*] Enter control IP: ")
+    robotIP = "192.168.1.122"#raw_input("[*] Enter robot IP: ")
 except KeyboardInterrupt:
     print "\n[*] User requested shutdown"
     print "[*] Exiting..."

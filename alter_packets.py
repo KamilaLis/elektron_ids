@@ -5,10 +5,11 @@ import sys
 import os
 import time
 
+robotIP = "192.168.1.122"
+
 print "\n[*] Redirect traffic to the NFQUEUE... \n"
 os.system("ip link set dev enp0s3 promisc on")
-os.system("iptables -A FORWARD -p tcp --tcp-flags ALL PSH,ACK -d 192.168.1.241 -j NFQUEUE --queue-num 1")
-#os.system("iptables -t nat -A PREROUTING -p tcp -d 192.168.1.241 -j NFQUEUE --queue-num 1")
+os.system("iptables -A FORWARD -p tcp --tcp-flags ALL PSH,ACK -d "+robotIP+" -j NFQUEUE --queue-num 1")
 
 
 def print_and_accept(pkt):
