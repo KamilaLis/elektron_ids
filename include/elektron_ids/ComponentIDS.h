@@ -8,8 +8,8 @@
 #include <ros/ros.h>
 #include <diagnostic_msgs/DiagnosticStatus.h>
 
-//#include <sstream>
 #include "XmlRpc.h"
+#include "manager_api/AlertManagement.h"
 
 
 namespace elektron_ids {
@@ -45,12 +45,12 @@ public:
     bool isAuthorizated(const std::string& node_name,const std::string& topic_name,XmlRpc::XmlRpcValue par);
     bool killNode(const std::string& node);
 
-    
+    manager_api::AlertManagement manager = manager_api::AlertManagement("elektron_ids");
 
 private:
     // publisher
     ros::Publisher diagnostic_pub_;
-
+    
     // parameters
     XmlRpc::XmlRpcValue par_IP_;
     XmlRpc::XmlRpcValue par_subscribers_;

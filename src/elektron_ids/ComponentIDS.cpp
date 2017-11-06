@@ -31,7 +31,7 @@ ComponentIDS::ComponentIDS()
     //    ROS_INFO("%s, %d",(elem.first).c_str(), elem.second);
 
     // advertise
-    diagnostic_pub_ = local_nh.advertise<diagnostic_msgs::DiagnosticStatus>("warnings", 1);
+    manager.initPublisher(local_nh);
 }
 
 // Retrieve list representation of system state (i.e. publishers, subscribers, and services).
@@ -316,12 +316,12 @@ bool ComponentIDS::killNode(const std::string& node)
     if(response=="y" || response=="Y"){
         command = "rosnode kill " + node;
         system(command.c_str());
-        ok("Node "+ node +" killed by operator.");
+        manager.ok("Node "+ node +" killed by operator.");
         return true;
     }
     // add node to gray list
     addToGrayList(node);
-    ok("Node "+ node +" accepted by operator. Added to grayList.");
+    manager.ok("Node "+ node +" accepted by operator. Added to grayList.");
     return false;
 }
 
@@ -337,12 +337,15 @@ void ComponentIDS::detectNodeSubstitution(std::map<std::string,int> current_node
         if(current_nodes.find(node) == current_nodes.end())
         { // node from nodes_ is not alive
             ROS_WARN("Node %s seems to be killed",(node).c_str());
-            error("Node "+ node +" seems to be killed");
+            manager.error("Node "+ node +" seems to be killed");
         }
         else if(current_nodes[node] != pid)
         { // node has wrong pid 
-            ROS_WARN("Registered new node instead of %s",(node).c_str());
-            error("Registered new node instead of "+ node +".");
+            ROS_WARN("Registered new node [pid:%d] instead of %s [pid:%d]",
+                                                        current_nodes[node],
+                                                        (node).c_str(),
+                                                        pid);
+            manager.error("Registered new node instead of "+ node +".");
             killNode(node);
         }
     }
@@ -401,48 +404,10 @@ void ComponentIDS::detectInterruption(const std::string& topic)
         if(callback_echo->count_==0 && !callback_echo->done_)
         {
             ROS_WARN("Potential interruption: no messages received on %s",topic.c_str());
-            warn("Potential interruption: no messages received on "+topic);
+            manager.warn("Potential interruption: no messages received on "+topic);
         }
     }
 
-}
-
-// Send info to diagnostics topic
-void ComponentIDS::sendDiagnosticMsg(const std::string& msg, int level)
-{
-    diagnostic_msgs::DiagnosticStatus message;
-    message.level = level;
-    message.name = "IDS:operator";
-    message.message = msg.c_str();
-    diagnostic_msgs::KeyValue values;
-    values.key = "rosTime";
-    values.value = std::to_string(ros::Time::now().toSec());
-    message.values = {values};
-    diagnostic_pub_.publish(message);
-}
-
-/*
-Possible levels of operations
-    byte OK=0
-    byte WARN=1
-    byte ERROR=2
-    byte STALE=3
-*/
-
-// Log warning in diagnostics
-void ComponentIDS::warn(const std::string& msg)
-{
-    sendDiagnosticMsg(msg, 1);
-}
-
-void ComponentIDS::error(const std::string& msg)
-{
-    sendDiagnosticMsg(msg, 2);
-}
-
-void ComponentIDS::ok(const std::string& msg)
-{
-    sendDiagnosticMsg(msg, 0);
 }
 
 }; /* namespace elektron_ids */

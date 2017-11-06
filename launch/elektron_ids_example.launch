@@ -20,8 +20,8 @@
     <!-- logger -->
     <node name="logger" pkg="logger" type="logger.py" />
 
-    <!-- visual_odom >
-    <include file="$(find visual_odom)/launch/example.launch" /-->
+    <!-- visual_odom -->
+    <include file="$(find visual_odom)/launch/example.launch" />
 
     <!-- elektron_ids -->
     <node name="$(arg name)"
@@ -35,9 +35,9 @@
     <!-- limits -->
     <include file="$(find limits)/launch/remote.launch" >
         <arg name="machine_name" 
-             value="robot"  />
+             value="elektron_robot"  />
         <arg name="machine_address" 
-             value="192.168.1.241"  />
+             value="192.168.1.122"  />
     </include>
 
 </launch>
