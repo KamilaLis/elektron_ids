@@ -6,7 +6,7 @@
 
 //ROS
 #include <ros/ros.h>
-#include <diagnostic_msgs/DiagnosticStatus.h>
+//#include <diagnostic_msgs/DiagnosticStatus.h>
 
 #include "XmlRpc.h"
 #include "manager_api/AlertManagement.h"
@@ -25,11 +25,11 @@ public:
     bool detectFabrication(const std::string &topic, XmlRpc::XmlRpcValue & subscribers);
     void detectInterruption(const std::string& topic);
 
-    // diagnostics
+    /* diagnostics
     void sendDiagnosticMsg(const std::string& msg, int level);
     void warn(const std::string& msg);
     void error(const std::string& msg);
-    void ok(const std::string& msg);
+    void ok(const std::string& msg);*/
 
     // system state
     XmlRpc::XmlRpcValue getSystemState();
@@ -44,12 +44,16 @@ public:
     
     bool isAuthorizated(const std::string& node_name,const std::string& topic_name,XmlRpc::XmlRpcValue par);
     bool killNode(const std::string& node);
+    void do_killPublisher(const std::string &topic);
+    void do_killSubsriber(const std::string &topic);
 
-    manager_api::AlertManagement manager = manager_api::AlertManagement("elektron_ids");
+    // alerts
+    void alertCallback(const diagnostic_msgs::DiagnosticStatus::ConstPtr& msg);
+    
 
 private:
-    // publisher
-    ros::Publisher diagnostic_pub_;
+    //publisher
+    manager_api::AlertManagement manager = manager_api::AlertManagement("elektron_ids");
     
     // parameters
     XmlRpc::XmlRpcValue par_IP_;

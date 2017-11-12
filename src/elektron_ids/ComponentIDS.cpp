@@ -7,7 +7,7 @@ ComponentIDS::ComponentIDS()
 {
     // Read local parameters
     ros::NodeHandle local_nh("~");
-
+    
     par_IP_ = getParam("while_list");
     par_subscribers_ = getParam("subscribers");
     par_publishers_ = getParam("publishers");
@@ -16,15 +16,9 @@ ComponentIDS::ComponentIDS()
     ROS_ASSERT(par_subscribers_.getType() == XmlRpc::XmlRpcValue::TypeStruct);
     ROS_ASSERT(par_publishers_.getType() == XmlRpc::XmlRpcValue::TypeStruct);
 
-    /*for(XmlRpc::XmlRpcValue::ValueStruct::const_iterator it = par_publishers_.begin(); it != par_publishers_.end(); ++it) 
-    {
-    ROS_INFO_STREAM("Found par_publishers_: " << (std::string)(it->first) << " ==> " << par_publishers_[it->first]);
-    }
-    ROS_INFO_STREAM("node elek_ids: " << par_publishers_["elektron_ids"]);//["warnings"][0]); 
-     */
+    // just to make sure that all nodes are running
     std::string command = "rosnode list";
     std::string pid_str = exec(command.c_str());
-    //ROS_INFO("rosnode list: %s", pid_str.c_str());
 
     nodes_ = getNodes(getSystemState());
     //for(auto elem : nodes_)
@@ -230,6 +224,7 @@ XmlRpc::XmlRpcValue getListFromPar(XmlRpc::XmlRpcValue par,
                     const std::string& topic_name)
 {
     std::string str = "/";
+    //ROS_INFO("topic_name: %s", topic_name.c_str());
     std::size_t pos = topic_name.find(str);
     if(pos!=std::string::npos)
     { //there is '/' in topic name
@@ -238,7 +233,7 @@ XmlRpc::XmlRpcValue getListFromPar(XmlRpc::XmlRpcValue par,
     else
     {
         XmlRpc::XmlRpcValue list (par[topic_name]);
-        ROS_ASSERT(list.getType() == XmlRpc::XmlRpcValue::TypeArray);
+        //ROS_INFO_STREAM("list: " << list);
         return list;
     }
 }
@@ -247,30 +242,30 @@ XmlRpc::XmlRpcValue getListFromPar(XmlRpc::XmlRpcValue par,
 // Check if node is on list of sub/pub of topic
 bool ComponentIDS::isOnWhiteList(const std::string& node_name, const std::string& topic_name, XmlRpc::XmlRpcValue par)
 {
-    try{
+//    try{
         //if(sub) list = getParam("subscribers/"+topic_name);
         //else list = getParam("publishers/"+topic_name);
-
         XmlRpc::XmlRpcValue nodes = getListFromPar(par,topic_name.substr(1));
-        for(int i=0; i<nodes.size(); ++i)
-        {
-            if(node_name==static_cast<std::string>(nodes[i])) return true;
+        if(nodes.getType() == XmlRpc::XmlRpcValue::TypeArray)
+        {// if 
+            for(int i=0; i<nodes.size(); ++i)
+            {
+                if(node_name==static_cast<std::string>(nodes[i])) return true;
+            }
         }
+        //ROS_INFO("Node %s not found in whitelist as pub/sub of topic %s", node_name.c_str(), topic_name.c_str());
         return false;
-    }
-    catch (const std::runtime_error& error)
-    {
-        ROS_WARN("%s not found in whitelist", topic_name.c_str());
-    }
+//    }
+//    catch (const std::runtime_error& error)
+//    {
+//        ROS_WARN("%s not found in whitelist", topic_name.c_str());
+//    }
 }
 
 // 
 bool ComponentIDS::isAuthorizated(const std::string& node_name,const std::string& topic_name, XmlRpc::XmlRpcValue par)
 {
-    if((hasProperIP(node_name) && isOnWhiteList(node_name,topic_name,par)) || isOnGrayList(node_name)){
-        return true;
-    } 
-    return false;
+    return (hasProperIP(node_name) && isOnWhiteList(node_name,topic_name,par)) || isOnGrayList(node_name);
 }
 
 // Check if user wanted this node to stay 
@@ -286,9 +281,9 @@ void ComponentIDS::addToGrayList(const std::string& node)
     nodes_[node] = getPid(node);
 }
 
-/*
-*  ON WORKING
-*/
+/* -----------------------------------------------
+*       ON WORKING
+* -----------------------------------------------*/
 void ComponentIDS::on_working()
 {
     XmlRpc::XmlRpcValue system_state = getSystemState();
@@ -306,22 +301,31 @@ void ComponentIDS::on_working()
     }
 }
 
+// ----------------------------------------
+// FIX: czy blokować przerwania do czasu otrzymania odpowiedzi?
+// a może odczekać jakiś czas i jeśli nic nie dostanę to podjąć jakąś decyzję?
+// ----------------------------------------
 // Kill node if needed, return true if killed
 bool ComponentIDS::killNode(const std::string& node)
 {
-    std::string command = "echo 'Would you like to kill it? y/n: '";
+    std::string command;// = "echo 'Would you like to kill it? y/n: '";
     std::string response;
-    system(command.c_str());
+    //system(command.c_str());
+    ROS_INFO("Would you like to kill it? y/n:");
     std::cin>>response;
     if(response=="y" || response=="Y"){
         command = "rosnode kill " + node;
         system(command.c_str());
-        manager.ok("Node "+ node +" killed by operator.");
+        std::string info = "Node "+ node +" killed by operator.";
+        ROS_INFO("%s",info.c_str());
+        manager.ok(info);
         return true;
     }
     // add node to gray list
     addToGrayList(node);
-    manager.ok("Node "+ node +" accepted by operator. Added to grayList.");
+    std::string info = "Node "+ node +" accepted by operator. Added to grayList.";
+    ROS_INFO("%s",info.c_str());
+    manager.ok(info);
     return false;
 }
 
@@ -341,10 +345,7 @@ void ComponentIDS::detectNodeSubstitution(std::map<std::string,int> current_node
         }
         else if(current_nodes[node] != pid)
         { // node has wrong pid 
-            ROS_WARN("Registered new node [pid:%d] instead of %s [pid:%d]",
-                                                        current_nodes[node],
-                                                        (node).c_str(),
-                                                        pid);
+            ROS_WARN("Registered new node [pid:%d] instead of %s [pid:%d]",current_nodes[node],(node).c_str(),pid);
             manager.error("Registered new node instead of "+ node +".");
             killNode(node);
         }
@@ -356,10 +357,12 @@ void ComponentIDS::detectNodeSubstitution(std::map<std::string,int> current_node
 bool ComponentIDS::detectInterception(const std::string& topic,
                              XmlRpc::XmlRpcValue & subscribers)
 {
+    //ROS_INFO("detectInterception");
     XmlRpc::XmlRpcValue sub = getSubsName(topic, subscribers);
     if(sub.getType()== XmlRpc::XmlRpcValue::TypeArray){
         for (int s=0; s<sub.size(); ++s){
             std::string node = sub[s];
+            //ROS_INFO("subs:");
             if(!isAuthorizated(node,topic,par_subscribers_)){
                 ROS_WARN("Unauthorizated node %s subscribe data from %s", node.c_str(), topic.c_str());
                 // kill that node
@@ -376,9 +379,12 @@ bool ComponentIDS::detectFabrication(const std::string& topic,
                              XmlRpc::XmlRpcValue & publishers)
 {
     XmlRpc::XmlRpcValue pub = getPubsName(topic, publishers);
+    //ROS_INFO_STREAM("pub "<<pub);
     if(pub.getType()== XmlRpc::XmlRpcValue::TypeArray){
         for (int p=0; p<pub.size(); ++p){
+            //ROS_INFO("size:%d",pub.size());
             std::string node = pub[p];
+            //ROS_INFO("pubs");
             if(!isAuthorizated(node,topic,par_publishers_)){
                 ROS_WARN("Unauthorizated node %s publish data on %s", node.c_str(), topic.c_str());
                 if(killNode(node)) return true;
@@ -388,6 +394,9 @@ bool ComponentIDS::detectFabrication(const std::string& topic,
     return false;
 }
 
+// ----------------------------------------
+// FIX: to opóźnia każdą pętlę o 2 sek.!!!
+// ----------------------------------------
 // Check if camera image is published
 void ComponentIDS::detectInterruption(const std::string& topic)
 {   //print warning if nothing received for two seconds
@@ -408,6 +417,51 @@ void ComponentIDS::detectInterruption(const std::string& topic)
         }
     }
 
+}
+
+// ----------------------------------------
+// FIX: czy to ma w ogóle sens?? 
+// jak obsłużyć najlepiej alarm od visual_odom?
+// gdzie odróżniać modyfikację od fabrykacji? czy w ogóle to robić? mam jak zareagować na fabrykację? 
+// ----------------------------------------
+// React on warning 
+void ComponentIDS::alertCallback(const diagnostic_msgs::DiagnosticStatus::ConstPtr& msg)
+{
+    if (msg->level == 2)
+    { // it is an error alert
+        ROS_ERROR("%s: %s", (msg->name).c_str(),(msg->message).c_str());
+        std::string request = msg->values[0].key;
+        std::string topic = msg->values[0].value;
+        manager_api::Message key = manager_api::getEnumForText(request);
+        switch (key){
+            case(manager_api::Message::killPublisher): do_killPublisher(topic);break;
+            case(manager_api::Message::killSubsriber): do_killSubsriber(topic);break;
+            case(manager_api::Message::rosTime): ;break;
+        }
+
+    }
+}
+
+void ComponentIDS::do_killPublisher(const std::string &topic)
+{
+    XmlRpc::XmlRpcValue system_state = getSystemState();
+    XmlRpc::XmlRpcValue pub = getPubsName(topic, system_state[0]);
+    if(pub.getType()== XmlRpc::XmlRpcValue::TypeArray){
+        for (int p=0; p<pub.size(); ++p){
+            killNode(pub[p]);
+        }
+    }
+}
+
+void ComponentIDS::do_killSubsriber(const std::string &topic)
+{
+    XmlRpc::XmlRpcValue system_state = getSystemState();
+    XmlRpc::XmlRpcValue sub = getSubsName(topic, system_state[1]);
+    if(sub.getType()== XmlRpc::XmlRpcValue::TypeArray){
+        for (int s=0; s<sub.size(); ++s){
+            killNode(sub[s]);
+        }
+    }
 }
 
 }; /* namespace elektron_ids */

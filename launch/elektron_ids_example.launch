@@ -18,7 +18,7 @@
     <rosparam file="$(arg config_file_nodes)" command="load" ns="$(arg name)" />
 
     <!-- logger -->
-    <node name="logger" pkg="logger" type="logger.py" />
+    <!--node name="logger" pkg="logger" type="logger.py" /-->
 
     <!-- visual_odom -->
     <include file="$(find visual_odom)/launch/example.launch" />

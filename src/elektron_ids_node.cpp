@@ -51,6 +51,12 @@ int main(int argc, char* argv[]) {
 
     elektron_ids::ComponentIDS component_ids;
 
+    // handle alerts from other modules
+    ros::NodeHandle nh;
+    ros::Subscriber visual_odom_sub = nh.subscribe("visual_odom/info",1000, 
+                                                    &elektron_ids::ComponentIDS::alertCallback, 
+                                                    &component_ids);
+
     if(static_cast<std::string>(argv[1])=="true")
     {
     // saving state to file (nodes)
@@ -75,9 +81,9 @@ int main(int argc, char* argv[]) {
     else
     { // start ids
         ROS_INFO("ELEKTRON_IDS STARTED !!");
-        
+
         // ROS loop
-        ros::Rate rate(20.0);
+        ros::Rate rate(50.0);
 
         while (ros::ok())
         {
