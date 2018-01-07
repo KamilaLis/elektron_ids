@@ -6,10 +6,11 @@
 
 //ROS
 #include <ros/ros.h>
-//#include <diagnostic_msgs/DiagnosticStatus.h>
+#include <diagnostic_msgs/DiagnosticStatus.h>
 
 #include "XmlRpc.h"
 #include "manager_api/AlertManagement.h"
+#include "manager_api/Manager.h"
 
 
 namespace elektron_ids {
@@ -44,16 +45,17 @@ public:
     
     bool isAuthorizated(const std::string& node_name,const std::string& topic_name,XmlRpc::XmlRpcValue par);
     bool killNode(const std::string& node);
+    void kill(const std::string& node);
     void do_killPublisher(const std::string &topic);
-    void do_killSubsriber(const std::string &topic);
+    void do_killSubsriber(const std::string &topic, const std::string &module_name);
 
     // alerts
-    void alertCallback(const diagnostic_msgs::DiagnosticStatus::ConstPtr& msg);
-    
+    // void alertCallback(const diagnostic_msgs::DiagnosticStatus::ConstPtr& msg);
+    bool handleAlert(manager_api::Manager::Request  &req, manager_api::Manager::Response &res);
 
 private:
-    //publisher
-    manager_api::AlertManagement manager = manager_api::AlertManagement("elektron_ids");
+    //publisher (for hypothetical usage with diagnostics package (http://wiki.ros.org/diagnostics))
+    manager_api::AlertManagement manager_pub_ = manager_api::AlertManagement("elektron_ids");
     
     // parameters
     XmlRpc::XmlRpcValue par_IP_;

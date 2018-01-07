@@ -55,4 +55,3 @@ target_link_libraries(elektron_ids_node
   ${catkin_LIBRARIES}
   ${PROJECT_NAME}
 )
-

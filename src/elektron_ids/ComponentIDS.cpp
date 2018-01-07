@@ -25,7 +25,7 @@ ComponentIDS::ComponentIDS()
     //    ROS_INFO("%s, %d",(elem.first).c_str(), elem.second);
 
     // advertise
-    manager.initPublisher(local_nh);
+    manager_pub_.initPublisher(local_nh);
 }
 
 // Retrieve list representation of system state (i.e. publishers, subscribers, and services).
@@ -318,15 +318,25 @@ bool ComponentIDS::killNode(const std::string& node)
         system(command.c_str());
         std::string info = "Node "+ node +" killed by operator.";
         ROS_INFO("%s",info.c_str());
-        manager.ok(info);
+        manager_pub_.ok(info);
         return true;
     }
     // add node to gray list
     addToGrayList(node);
     std::string info = "Node "+ node +" accepted by operator. Added to grayList.";
     ROS_INFO("%s",info.c_str());
-    manager.ok(info);
+    manager_pub_.ok(info);
     return false;
+}
+
+// Just kill, no asking for permission
+void ComponentIDS::kill(const std::string& node)
+{
+    std::string command = "rosnode kill " + node;
+    system(command.c_str());
+    std::string info = "Node "+ node +" killed by operator.";
+    ROS_INFO("%s",info.c_str());
+    manager_pub_.ok(info);
 }
 
 // Check if nodes from nodes_ are working with right pid
@@ -341,12 +351,12 @@ void ComponentIDS::detectNodeSubstitution(std::map<std::string,int> current_node
         if(current_nodes.find(node) == current_nodes.end())
         { // node from nodes_ is not alive
             ROS_WARN("Node %s seems to be killed",(node).c_str());
-            manager.error("Node "+ node +" seems to be killed");
+            manager_pub_.error("Node "+ node +" seems to be killed");
         }
         else if(current_nodes[node] != pid)
         { // node has wrong pid 
             ROS_WARN("Registered new node [pid:%d] instead of %s [pid:%d]",current_nodes[node],(node).c_str(),pid);
-            manager.error("Registered new node instead of "+ node +".");
+            manager_pub_.error("Registered new node instead of "+ node +".");
             killNode(node);
         }
     }
@@ -413,7 +423,7 @@ void ComponentIDS::detectInterruption(const std::string& topic)
         if(callback_echo->count_==0 && !callback_echo->done_)
         {
             ROS_WARN("Potential interruption: no messages received on %s",topic.c_str());
-            manager.warn("Potential interruption: no messages received on "+topic);
+            manager_pub_.warn("Potential interruption: no messages received on "+topic);
         }
     }
 
@@ -425,41 +435,63 @@ void ComponentIDS::detectInterruption(const std::string& topic)
 // gdzie odróżniać modyfikację od fabrykacji? czy w ogóle to robić? mam jak zareagować na fabrykację? 
 // ----------------------------------------
 // React on warning 
-void ComponentIDS::alertCallback(const diagnostic_msgs::DiagnosticStatus::ConstPtr& msg)
-{
-    if (msg->level == 2)
-    { // it is an error alert
-        ROS_ERROR("%s: %s", (msg->name).c_str(),(msg->message).c_str());
-        std::string request = msg->values[0].key;
-        std::string topic = msg->values[0].value;
+// void ComponentIDS::alertCallback(const diagnostic_msgs::DiagnosticStatus::ConstPtr& msg)
+// {
+//     if (msg->level == 2)
+//     { // it is an error alert
+//         ROS_ERROR("%s: %s", (msg->name).c_str(),(msg->message).c_str());
+//         std::string request = msg->values[0].key;
+//         std::string topic = msg->values[0].value;
+//         manager_api::Message key = manager_api::getEnumForText(request);
+//         switch (key){
+//             case(manager_api::Message::killPublisher): do_killPublisher(topic);break;
+//             case(manager_api::Message::killSubsriber): do_killSubsriber(topic, msg->name);break;
+//             case(manager_api::Message::rosTime): ;break;
+//         }
+
+//     }
+// }
+
+ bool ComponentIDS::handleAlert(manager_api::Manager::Request  &req, 
+                                 manager_api::Manager::Response &res){
+    if (req.status.level == 2){
+        ROS_ERROR("%s: %s", (req.status.name).c_str(),(req.status.message).c_str());
+        std::string request = req.status.values[0].key;
+        ROS_INFO("Request: %s", request.c_str());
+        std::string topic = req.status.values[0].value;
         manager_api::Message key = manager_api::getEnumForText(request);
         switch (key){
             case(manager_api::Message::killPublisher): do_killPublisher(topic);break;
-            case(manager_api::Message::killSubsriber): do_killSubsriber(topic);break;
+            case(manager_api::Message::killSubsriber): do_killSubsriber(topic, req.status.name);break;
             case(manager_api::Message::rosTime): ;break;
         }
-
+        res.done = true;
+        return true;
     }
-}
+ }
 
 void ComponentIDS::do_killPublisher(const std::string &topic)
 {
+    // kill all publishers!
     XmlRpc::XmlRpcValue system_state = getSystemState();
     XmlRpc::XmlRpcValue pub = getPubsName(topic, system_state[0]);
     if(pub.getType()== XmlRpc::XmlRpcValue::TypeArray){
         for (int p=0; p<pub.size(); ++p){
-            killNode(pub[p]);
+            kill(pub[p]);
         }
     }
 }
 
-void ComponentIDS::do_killSubsriber(const std::string &topic)
+void ComponentIDS::do_killSubsriber(const std::string &topic, const std::string &module_name)
 {
     XmlRpc::XmlRpcValue system_state = getSystemState();
     XmlRpc::XmlRpcValue sub = getSubsName(topic, system_state[1]);
     if(sub.getType()== XmlRpc::XmlRpcValue::TypeArray){
         for (int s=0; s<sub.size(); ++s){
-            killNode(sub[s]);
+            std::string node = sub[s];
+            if(node.find(module_name) == std::string::npos){
+                kill(node);
+            }
         }
     }
 }

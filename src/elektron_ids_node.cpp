@@ -33,7 +33,6 @@ void shutdownCallback(XmlRpc::XmlRpcValue& params, XmlRpc::XmlRpcValue& result)
   {
     std::string reason = params[1];
     ROS_WARN("Shutdown request received. Reason: [%s]", reason.c_str());
-    //g_request_shutdown = 1; // Set flag
   }
 
   result = ros::xmlrpc::responseInt(1, "", 0);
@@ -53,12 +52,14 @@ int main(int argc, char* argv[]) {
 
     // handle alerts from other modules
     ros::NodeHandle nh;
-    ros::Subscriber visual_odom_sub = nh.subscribe("visual_odom/info",1000, 
-                                                    &elektron_ids::ComponentIDS::alertCallback, 
-                                                    &component_ids);
-    ros::Subscriber limits_sub = nh.subscribe("limits/info",1000, 
-                                                    &elektron_ids::ComponentIDS::alertCallback, 
-                                                    &component_ids);
+    ros::ServiceServer service = nh.advertiseService("manager", &elektron_ids::ComponentIDS::handleAlert, &component_ids);
+
+    // ros::Subscriber visual_odom_sub = nh.subscribe("visual_odom/info",1000, 
+    //                                                 &elektron_ids::ComponentIDS::alertCallback, 
+    //                                                 &component_ids);
+    // ros::Subscriber limits_sub = nh.subscribe("limits/info",1000, 
+    //                                                 &elektron_ids::ComponentIDS::alertCallback, 
+    //                                                 &component_ids);
 
     if(static_cast<std::string>(argv[1])=="true")
     {
@@ -86,7 +87,7 @@ int main(int argc, char* argv[]) {
         ROS_INFO("ELEKTRON_IDS STARTED !!");
 
         // ROS loop
-        ros::Rate rate(50.0);
+        ros::Rate rate(20.0);
 
         while (ros::ok())
         {
