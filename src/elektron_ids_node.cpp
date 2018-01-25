@@ -54,13 +54,6 @@ int main(int argc, char* argv[]) {
     ros::NodeHandle nh;
     ros::ServiceServer service = nh.advertiseService("manager", &elektron_ids::ComponentIDS::handleAlert, &component_ids);
 
-    // ros::Subscriber visual_odom_sub = nh.subscribe("visual_odom/info",1000, 
-    //                                                 &elektron_ids::ComponentIDS::alertCallback, 
-    //                                                 &component_ids);
-    // ros::Subscriber limits_sub = nh.subscribe("limits/info",1000, 
-    //                                                 &elektron_ids::ComponentIDS::alertCallback, 
-    //                                                 &component_ids);
-
     if(static_cast<std::string>(argv[1])=="true")
     {
     // saving state to file (nodes)

@@ -26,12 +26,6 @@ public:
     bool detectFabrication(const std::string &topic, XmlRpc::XmlRpcValue & subscribers);
     void detectInterruption(const std::string& topic);
 
-    /* diagnostics
-    void sendDiagnosticMsg(const std::string& msg, int level);
-    void warn(const std::string& msg);
-    void error(const std::string& msg);
-    void ok(const std::string& msg);*/
-
     // system state
     XmlRpc::XmlRpcValue getSystemState();
     std::map<std::string,int> getNodes(XmlRpc::XmlRpcValue system_state);

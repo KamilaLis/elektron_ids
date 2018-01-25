@@ -16,7 +16,6 @@ class EchoCallback
 {
 private:
     ros::Subscriber sub_;
-    //ros::Timer timer;
 
 public:
 
@@ -29,7 +28,6 @@ public:
     {
         ros::NodeHandle n;
         sub_ = n.subscribe(topic, 1000, &EchoCallback::imageCallback, this);
-        //timer = n.createTimer(ros::Duration(2.0), &EchoCallback::timerCallback, this);
     }
 
 
@@ -52,12 +50,6 @@ public:
         } 
     }
 
-/*    void timerCallback(const ros::TimerEvent& e){
-        if(this->count_==0 && !this->done_)
-        { //nothing recived in 2 seconds
-
-        }
-    }*/
 };
 };//namespace
 
